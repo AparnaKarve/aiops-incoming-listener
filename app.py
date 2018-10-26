@@ -41,7 +41,7 @@ def listen() -> dict:
     consumer = KafkaConsumer(topic, bootstrap_servers=server)
 
     for msg in consumer:
-        logger.debug('Received message: %s', str(msg))
+        logger.info('Received message: %s', str(msg))
         yield loads(msg.value)
 
 
