@@ -45,7 +45,7 @@ def hit_next_in_pipepine(payload: dict) -> None:
         pass
     except requests.exceptions.ConnectionError as e:
         prometheus_metrics.incoming_listener_post_requests_connectionerror.inc()
-        logger.warning('Call to next service failed: %s', str(e))
+        ROOT_LOGGER.warning('Call to next service failed: %s', str(e))
 
     prometheus_metrics.incoming_listener_post_requests_successful.inc()
 
@@ -61,12 +61,12 @@ def listen() -> dict:
     group_id = os.environ.get('KAFKA_CLIENT_GROUP')
     client_id = uuid4()
 
-    logger.info('Connecting to Kafka server...')
-    logger.info('Client configuration:')
-    logger.info('\tserver:    %s', server)
-    logger.info('\ttopic:     %s', topic)
-    logger.info('\tgroup_id:  %s', group_id)
-    logger.info('\tclient_id: %s', client_id)
+    ROOT_LOGGER.info('Connecting to Kafka server...')
+    ROOT_LOGGER.info('Client configuration:')
+    ROOT_LOGGER.info('\tserver:    %s', server)
+    ROOT_LOGGER.info('\ttopic:     %s', topic)
+    ROOT_LOGGER.info('\tgroup_id:  %s', group_id)
+    ROOT_LOGGER.info('\tclient_id: %s', client_id)
 
     consumer = KafkaConsumer(
         topic,
@@ -75,11 +75,11 @@ def listen() -> dict:
         bootstrap_servers=server
     )
 
-    logger.info('Consumer subscribed and active!')
+    ROOT_LOGGER.info('Consumer subscribed and active!')
 
     for msg in consumer:
         prometheus_metrics.incoming_total.inc()
-        logger.debug('Received message: %s', str(msg))
+        ROOT_LOGGER.debug('Received message: %s', str(msg))
         yield loads(msg.value)
 
 def run_consumer():
@@ -98,7 +98,7 @@ def run_consumer():
     for received in listen():
         if 'url' not in received:
             prometheus_metrics.incoming_ignored.inc()
-            logger.warning(
+            ROOT_LOGGER.warning(
                 'Message is missing data location URL. Message ignored: %s',
                 received
             )
