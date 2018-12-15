@@ -20,6 +20,11 @@ def metrics():
     """Metrics route."""
     return prometheus_metrics.generate_latest()
 
+@application.route('/hi')
+def hi():
+    """Metrics route."""
+    return 'Hi'
+
 # # Setup logging
 # logging.basicConfig(level=logging.WARNING)
 # logger = logging.getLogger('consumer')
