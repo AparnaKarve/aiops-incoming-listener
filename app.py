@@ -7,6 +7,8 @@ from uuid import uuid4
 from kafka import KafkaConsumer
 import requests
 
+from monitoring import prometheus_metrics
+
 # Setup logging
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger('consumer')
@@ -19,12 +21,17 @@ def hit_next_in_pipepine(payload: dict) -> None:
 
     # FIXME: Convert to aiohttp or some other async requests alternative
     # Do not wait for response now, so we can keep listening
+    prometheus_metrics.incoming_listener_post_requests_total.inc()
     try:
         requests.post(f'http://{host}', json=payload, timeout=10)
     except requests.exceptions.ReadTimeout:
+        prometheus_metrics.incoming_listener_post_requests_readtimeout.inc()
         pass
     except requests.exceptions.ConnectionError as e:
+        prometheus_metrics.incoming_listener_post_requests_connectionerror.inc()
         logger.warning('Call to next service failed: %s', str(e))
+
+    prometheus_metrics.incoming_listener_post_requests_successful.inc()
 
 
 def listen() -> dict:
@@ -55,6 +62,7 @@ def listen() -> dict:
     logger.info('Consumer subscribed and active!')
 
     for msg in consumer:
+        prometheus_metrics.incoming_total.inc()
         logger.debug('Received message: %s', str(msg))
         yield loads(msg.value)
 
@@ -74,6 +82,7 @@ if __name__ == '__main__':
     # Run the consumer
     for received in listen():
         if 'url' not in received:
+            prometheus_metrics.incoming_ignored.inc()
             logger.warning(
                 'Message is missing data location URL. Message ignored: %s',
                 received
@@ -87,5 +96,6 @@ if __name__ == '__main__':
                 'rh_account': received.get('rh_account', None)
             }
         }
+        prometheus_metrics.incoming_processed.inc()
 
         hit_next_in_pipepine(message)
