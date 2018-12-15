@@ -1,13 +1,23 @@
 import os
 import logging
 import sys
+import threading
 from json import loads
 from uuid import uuid4
 
+from flask import Flask
 from kafka import KafkaConsumer
 import requests
 
 from monitoring import prometheus_metrics
+
+application = Flask(__name__)  # noqa
+
+
+@application.route('/metrics')
+def metrics():
+    """Metrics route."""
+    return prometheus_metrics.generate_latest()
 
 # Setup logging
 logging.basicConfig(level=logging.WARNING)
@@ -66,8 +76,7 @@ def listen() -> dict:
         logger.debug('Received message: %s', str(msg))
         yield loads(msg.value)
 
-
-if __name__ == '__main__':
+def run_consumer():
     # Check environment variables passed to container
     # pylama:ignore=C0103
     env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_MICROSERVICE_HOST'}
@@ -99,3 +108,9 @@ if __name__ == '__main__':
         prometheus_metrics.incoming_processed.inc()
 
         hit_next_in_pipepine(message)
+
+
+if __name__ == '__main__':
+    t = threading.Thread(target=run_consumer)
+    t.start()
+    application.run()
