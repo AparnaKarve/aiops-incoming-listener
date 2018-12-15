@@ -6,6 +6,7 @@ from json import loads
 from uuid import uuid4
 
 from flask import Flask
+from flask.logging import default_handler
 from kafka import KafkaConsumer
 import requests
 
@@ -19,10 +20,15 @@ def metrics():
     """Metrics route."""
     return prometheus_metrics.generate_latest()
 
-# Setup logging
-logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger('consumer')
-logger.setLevel(logging.DEBUG)
+# # Setup logging
+# logging.basicConfig(level=logging.WARNING)
+# logger = logging.getLogger('consumer')
+# logger.setLevel(logging.DEBUG)
+
+# Set up logging
+ROOT_LOGGER = logging.getLogger()
+ROOT_LOGGER.setLevel(application.logger.level)
+ROOT_LOGGER.addHandler(default_handler)
 
 
 def hit_next_in_pipepine(payload: dict) -> None:
@@ -82,7 +88,7 @@ def run_consumer():
     env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_MICROSERVICE_HOST'}
 
     if not env.issubset(os.environ):
-        logger.error(
+        ROOT_LOGGER.error(
             'Environment not set properly, missing %s',
             env - set(os.environ)
         )
