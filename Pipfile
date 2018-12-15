@@ -4,7 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+flask = "*"
 kafka-python = "*"
+prometheus_client = "*"
 requests = ">=2.20.0"
 
 [dev-packages]
