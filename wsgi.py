@@ -38,7 +38,7 @@ VALIDATE_PRESENCE = {'url', 'b64_identity'}
 NEXT_SERVICE_URL = os.environ.get('NEXT_SERVICE_URL')
 MAX_RETRIES = 3
 
-APP = Flask(__name__)
+application = Flask(__name__)
 
 
 async def hit_next(msg_id: str, message: dict) -> aiohttp.ClientResponse:
@@ -185,7 +185,7 @@ async def consume_messages() -> None:
 #
 # main()
 
-@APP.route("/listen", methods=['GET'])
+@application.route("/listen", methods=['GET'])
 def get_listen():
     """Listen Endpoint."""
     # Check environment variables passed to container
@@ -203,7 +203,7 @@ def get_listen():
     # Run the consumer
     MAIN_LOOP.run_until_complete(consume_messages())
 
-@APP.route('/', methods=['GET'])
+@application.route('/', methods=['GET'])
 def get_root():
     """Root Endpoint for Liveness/Readiness check."""
     return jsonify(
@@ -214,4 +214,4 @@ def get_root():
 if __name__ == '__main__':
     # pylama:ignore=C0103
     port = os.environ.get("PORT", 8008)
-    APP.run(port=int(port))
+    application.run(port=int(port))
