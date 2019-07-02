@@ -190,7 +190,7 @@ def get_listen():
     """Listen Endpoint."""
     # Check environment variables passed to container
     # pylama:ignore=C0103
-    env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_MICROSERVICE_HOST'}
+    env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_SERVICE_URL'}
 
     if not env.issubset(os.environ):
         err = f'Environment not set properly, missing {env - set(os.environ)}'
