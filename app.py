@@ -7,6 +7,8 @@ import asyncio
 
 import aiohttp
 from aiokafka import AIOKafkaConsumer, ConsumerRecord
+from flask import Flask, jsonify
+from gunicorn.arbiter import Arbiter
 
 # Setup logging
 logging.basicConfig(
@@ -35,6 +37,8 @@ VALIDATE_PRESENCE = {'url', 'b64_identity'}
 # Next micro-service host:port
 NEXT_SERVICE_URL = os.environ.get('NEXT_SERVICE_URL')
 MAX_RETRIES = 3
+
+APP = Flask(__name__)
 
 
 async def hit_next(msg_id: str, message: dict) -> aiohttp.ClientResponse:
@@ -160,22 +164,54 @@ async def consume_messages() -> None:
         await consumer.stop()
 
 
-def main():
-    """Service init function."""
-    if __name__ == '__main__':
-        # Check environment variables passed to container
-        # pylama:ignore=C0103
-        env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_SERVICE_URL'}
 
-        if not env.issubset(os.environ):
-            logger.error(
-                'Environment not set properly, missing %s',
-                env - set(os.environ)
-            )
-            sys.exit(1)
+# def main():
+#     """Service init function."""
+#     if __name__ == '__main__':
+#         # Check environment variables passed to container
+#         # pylama:ignore=C0103
+#         env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_SERVICE_URL'}
+#
+#         if not env.issubset(os.environ):
+#             logger.error(
+#                 'Environment not set properly, missing %s',
+#                 env - set(os.environ)
+#             )
+#             sys.exit(1)
+#
+#         # Run the consumer
+#         MAIN_LOOP.run_until_complete(consume_messages())
+#
+#
+# main()
 
-        # Run the consumer
-        MAIN_LOOP.run_until_complete(consume_messages())
+@APP.route("/listen", methods=['GET'])
+def get_listen():
+    """Listen Endpoint."""
+    # Check environment variables passed to container
+    # pylama:ignore=C0103
+    env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_MICROSERVICE_HOST'}
 
+    if not env.issubset(os.environ):
+        err = f'Environment not set properly, missing {env - set(os.environ)}'
+        logger.error(err)
+        return jsonify(
+            status='Error',
+            message=err
+        ), 500
 
-main()
+    # Run the consumer
+    MAIN_LOOP.run_until_complete(consume_messages())
+
+@APP.route('/', methods=['GET'])
+def get_root():
+    """Root Endpoint for Liveness/Readiness check."""
+    return jsonify(
+        status="OK",
+        message="All well"
+    ), 200
+
+if __name__ == '__main__':
+    # pylama:ignore=C0103
+    port = os.environ.get("PORT", 8008)
+    APP.run(port=int(port))
