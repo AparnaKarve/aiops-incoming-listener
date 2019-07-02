@@ -202,6 +202,10 @@ def get_listen():
 
     # Run the consumer
     MAIN_LOOP.run_until_complete(consume_messages())
+    return jsonify(
+        status='OK',
+        message="listening to messages"
+    ), 200
 
 @application.route('/', methods=['GET'])
 def get_root():
