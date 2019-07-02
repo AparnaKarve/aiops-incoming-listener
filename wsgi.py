@@ -9,6 +9,7 @@ import aiohttp
 from aiokafka import AIOKafkaConsumer, ConsumerRecord
 from flask import Flask, jsonify
 from gunicorn.arbiter import Arbiter
+import threading
 
 # Setup logging
 logging.basicConfig(
@@ -38,7 +39,15 @@ VALIDATE_PRESENCE = {'url', 'b64_identity'}
 NEXT_SERVICE_URL = os.environ.get('NEXT_SERVICE_URL')
 MAX_RETRIES = 3
 
-application = Flask(__name__)
+# application = Flask(__name__)
+
+consumer = AIOKafkaConsumer(
+        TOPIC,
+        loop=MAIN_LOOP,
+        client_id=CLIENT_ID,
+        group_id=GROUP_ID,
+        bootstrap_servers=SERVER
+    )
 
 
 async def hit_next(msg_id: str, message: dict) -> aiohttp.ClientResponse:
@@ -142,13 +151,13 @@ async def consume_messages() -> None:
     logger.info('\tgroup_id:  %s', GROUP_ID)
     logger.info('\tclient_id: %s', CLIENT_ID)
 
-    consumer = AIOKafkaConsumer(
-        TOPIC,
-        loop=MAIN_LOOP,
-        client_id=CLIENT_ID,
-        group_id=GROUP_ID,
-        bootstrap_servers=SERVER
-    )
+    # consumer = AIOKafkaConsumer(
+    #     TOPIC,
+    #     loop=MAIN_LOOP,
+    #     client_id=CLIENT_ID,
+    #     group_id=GROUP_ID,
+    #     bootstrap_servers=SERVER
+    # )
 
     # Get cluster layout, subscribe to group
     await consumer.start()
@@ -185,31 +194,39 @@ async def consume_messages() -> None:
 #
 # main()
 
-@application.route("/listen", methods=['GET'])
-def get_listen():
-    """Listen Endpoint."""
-    # Check environment variables passed to container
-    # pylama:ignore=C0103
-    env = {'KAFKA_SERVER', 'KAFKA_TOPIC', 'NEXT_SERVICE_URL'}
 
-    if not env.issubset(os.environ):
-        err = f'Environment not set properly, missing {env - set(os.environ)}'
-        logger.error(err)
-        return jsonify(
-            status='Error',
-            message=err
-        ), 500
 
-    # Run the consumer
+
+def run_consumer():
     MAIN_LOOP.run_until_complete(consume_messages())
-    return jsonify(
-        status='OK',
-        message="listening to messages"
-    ), 200
+
+
+# def run_server():
+#     port = os.environ.get("PORT", 8008)
+#     application.run(port=int(port))
+
+
+
+def create_app():
+    app = Flask(__name__)
+    def run_on_start():
+        t = threading.Thread(target=run_consumer)
+        t.start()
+    run_on_start()
+    return app
+application = create_app()
+
 
 @application.route('/', methods=['GET'])
 def get_root():
     """Root Endpoint for Liveness/Readiness check."""
+    print("Hello")
+    if consumer._client._conns == {}:
+        return jsonify(
+            status="Error",
+            message="Uh oh not connected"
+        ), 500
+
     return jsonify(
         status="OK",
         message="All well"
