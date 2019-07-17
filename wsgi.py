@@ -50,9 +50,10 @@ def get_root():
     """Root Endpoint."""
     if APP.KAFKA_RESOURCES.get('consumer') and \
             APP.KAFKA_RESOURCES.get('consumer')._client._conns:
+        import json
         return jsonify(
             status='OK',
-            message='Listener Up and Running'
+            message=json.dumps(str(APP.KAFKA_RESOURCES.get('consumer')._client._conns).replace("'",'"'))
         )
     return jsonify(
         status='Error',
